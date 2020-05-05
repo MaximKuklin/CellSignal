@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 
 class CellDataset(Dataset):
-    def __init__(self, root, mode, transforms=None):
+    def __init__(self, root, mode, transforms=None, show=False):
 
         path = os.path.join(root, 'annotations', mode+'.csv')
         self.mode = mode
@@ -15,8 +15,12 @@ class CellDataset(Dataset):
             self.images_path = os.path.join(root, self.mode)
         else:
             self.images_path = os.path.join(root, 'train')
+        self.transforms = transforms
         self.data = pd.read_csv(path).values
-        self.classes = {cls[-1]: int(cls[-1][6:]) for cls in self.data}
+        classes = sorted([int(elem[6:]) for elem in np.unique(self.data[..., -1])])
+        classes_interpr = np.arange(1108)
+        self.classes = {'sirna_'+str(classes[i]):classes_interpr[i] for i in range(1108)}
+        self.show = show
 
     def __len__(self):
         return len(self.data)
@@ -36,13 +40,15 @@ class CellDataset(Dataset):
         line = self.data[idx]
         image = self.get_image(line)
 
-        plt.imshow(image[3:].transpose(1,2,0))
-        plt.show()
+        if self.transforms is not None:
+            image = image.transpose(1, 2, 0)
+            image = self.transforms(image=image)['image']
 
-        cls = int(line[-1][6:])
+        if self.show:
+            plt.imshow(image[3:].transpose(1,2,0))
+            plt.show()
+
+        cls = int(self.classes[line[-1]])
         return image, cls
 
-dataset = CellDataset('dataset', mode='val')
-
-dataset[0]
 
