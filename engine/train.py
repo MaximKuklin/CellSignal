@@ -54,7 +54,7 @@ class ClassificationModel(pl.LightningModule):
 
     def training_epoch_end(self, outputs):
         avg_loss = torch.stack([x['loss'] for x in outputs]).mean()
-        avg_accuracy = torch.tensor([x['accuracy'] for x in outputs], dtype=float).mean()/self.batch_size
+        avg_accuracy = torch.tensor([x['accuracy'] for x in outputs], dtype=float).mean()
         logs = {'avg_loss': avg_loss, 'avg_accuracy': avg_accuracy}
         tensorboard_logs = {'train/avg_loss': avg_loss, 'train/avg_accuracy': avg_accuracy}
         results = {'progress_bar': logs, 'log': tensorboard_logs}
@@ -65,12 +65,12 @@ class ClassificationModel(pl.LightningModule):
         output = self.forward(images)
         loss = self.loss_fn(output, targets)
         pred = output.argmax(dim=1)
-        correct = (targets==pred).sum().item()
+        correct = (targets==pred).sum().item()/float(len(targets))
         return {'val_loss': loss, 'val_accuracy': correct}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
-        avg_accuracy = torch.tensor([x['val_accuracy'] for x in outputs], dtype=float).mean()/self.batch_size
+        avg_accuracy = torch.tensor([x['val_accuracy'] for x in outputs], dtype=float).mean()
 
         logs = {'avg_val_loss': avg_loss, 'avg_val_accuracy': avg_accuracy}
         tensorboard_logs = {'val/avg_val_loss': avg_loss, 'val/avg_val_accuracy': avg_accuracy}
