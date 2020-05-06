@@ -7,7 +7,7 @@ checkpoint_callback = ModelCheckpoint(
     verbose=True,
     monitor='val_loss',
     mode='min',
-    prefix='',
+    prefix='checkpoints/',
 )
 
 early_stop_callback = EarlyStopping(

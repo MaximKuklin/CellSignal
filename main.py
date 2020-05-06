@@ -15,7 +15,7 @@ if __name__ == '__main__':
     # parser.add_argument('--gpus', type=int, default=0)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--initial_lr', type=float, default=1e-3)
-    parser.add_argument('--max_epoch', type=int, default=10)
+    parser.add_argument('--max_epoch', type=int, default=10000)
 
     parser = pl.Trainer.add_argparse_args(parser)
 
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     model = ClassificationModel(hparams=args)
     trainer = pl.Trainer(
         checkpoint_callback=checkpoint_callback,
-        early_stop_callback=early_stop_callback,
+        # early_stop_callback=early_stop_callback,
         max_epochs=args.max_epoch, gpus=[0], logger=logger
     )
 

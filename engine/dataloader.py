@@ -18,8 +18,8 @@ class CellDataset(Dataset):
         self.transforms = transforms
         self.data = pd.read_csv(path).values
         classes = sorted([int(elem[6:]) for elem in np.unique(self.data[..., -1])])
-        classes_interpr = np.arange(1108)
-        self.classes = {'sirna_'+str(classes[i]):classes_interpr[i] for i in range(1108)}
+        classes_interpr = np.arange(len(classes))
+        self.classes = {'sirna_'+str(classes[i]):i for i in classes_interpr}
         self.show = show
 
     def __len__(self):
@@ -40,12 +40,16 @@ class CellDataset(Dataset):
         line = self.data[idx]
         image = self.get_image(line)
 
+        if self.show:
+            plt.imshow(image[:3].transpose(1,2,0))
+            plt.show()
+
         if self.transforms is not None:
             image = image.transpose(1, 2, 0)
             image = self.transforms(image=image)['image']
 
         if self.show:
-            plt.imshow(image[3:].transpose(1,2,0))
+            plt.imshow(image[:3].permute(1,2,0))
             plt.show()
 
         cls = int(self.classes[line[-1]])

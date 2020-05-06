@@ -22,7 +22,9 @@ class ClassificationModel(pl.LightningModule):
         return self.model(x)
 
     def prepare_data(self):
-        transforms_train = A.Compose([A.Resize(300, 300), A.ToFloat(max_value=255), ToTensorV2()])
+        transforms_train = A.Compose([A.Resize(300, 300), A.HorizontalFlip(p=0.5),
+                                      A.VerticalFlip(p=0.5), A.RandomRotate90(p=0.5),
+                                      A.ToFloat(max_value=255), ToTensorV2()])
         transforms_val = A.Compose([A.Resize(300, 300), A.ToFloat(max_value=255), ToTensorV2()])
 
         self.train_set = CellDataset(self.hparams.root, 'train', transforms=transforms_train)
