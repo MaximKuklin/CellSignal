@@ -6,6 +6,8 @@ from models import resnet
 import albumentations as A
 from engine.dataloader import CellDataset
 from albumentations.pytorch import ToTensorV2
+from losses.focal_loss import FocalLoss
+from losses.arcface_loss import ArcFaceLoss, ArcMarginProduct
 
 
 class ClassificationModel(pl.LightningModule):
@@ -13,18 +15,31 @@ class ClassificationModel(pl.LightningModule):
         super(ClassificationModel, self).__init__()
         self.hparams = hparams
         self.model = resnet.get_resnet(self.hparams.model_name)  # TODO: make model choice
+        self.classifier = torch.nn.Linear(512, self.hparams.num_classes)
         self.input_size = self.hparams.input_size
         self.num_workers = self.hparams.num_workers
         self.batch_size = self.hparams.batch_size
-        self.loss_fn = torch.nn.CrossEntropyLoss()
+        if self.hparams.focal_loss:
+            self.loss_fn = FocalLoss(gamma=2)
+        else:
+            self.loss_fn = torch.nn.CrossEntropyLoss()
+
+        if self.hparams.arcmargin:
+            self.metric_fn = ArcMarginProduct(512, self.hparams.num_classes)
+        else:
+            self.metric_fn = None
 
     def forward(self, x):
         return self.model(x)
 
     def prepare_data(self):
-        transforms_train = A.Compose([A.Resize(300, 300), A.HorizontalFlip(p=0.5),
-                                      A.VerticalFlip(p=0.5), A.RandomRotate90(p=0.5),
-                                      A.ToFloat(max_value=255), ToTensorV2()])
+        transforms_train = A.Compose([
+            A.RandomResizedCrop(300, 300, scale=(0.4, 1.0), ratio=(1, 1), p=1),
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5), A.RandomRotate90(p=0.5),
+            A.ToFloat(max_value=255), ToTensorV2()
+        ])
+
         transforms_val = A.Compose([A.Resize(300, 300), A.ToFloat(max_value=255), ToTensorV2()])
 
         self.train_set = CellDataset(self.hparams.root, 'train', transforms=transforms_train)
@@ -47,7 +62,11 @@ class ClassificationModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         images, targets = batch
-        output = self.forward(images)
+        feature = self.forward(images)
+        if self.metric_fn is not None:
+            output = self.metric_fn(feature, targets)
+        else:
+            output = self.classifier(feature)
         loss = self.loss_fn(output, targets)
         pred = output.argmax(dim=1)
         correct = (targets==pred).sum().item()/float(len(targets))
@@ -64,7 +83,11 @@ class ClassificationModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         images, targets = batch
-        output = self.forward(images)
+        feature = self.forward(images)
+        if self.metric_fn is not None:
+            output = self.metric_fn(feature, targets)
+        else:
+            output = self.classifier(feature)
         loss = self.loss_fn(output, targets)
         pred = output.argmax(dim=1)
         correct = (targets==pred).sum().item()/float(len(targets))
@@ -79,4 +102,3 @@ class ClassificationModel(pl.LightningModule):
 
         results = {'val_loss': avg_loss, 'progress_bar': logs, 'log': tensorboard_logs}
         return results
-

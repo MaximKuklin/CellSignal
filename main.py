@@ -14,6 +14,9 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', type=str, default='resnet18')
     # parser.add_argument('--gpus', type=int, default=0)
     parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--arcface_loss', action='store_true')
+    parser.add_argument('--arcmargin', action='store_true')
+    parser.add_argument('--focal_loss', action='store_true')
     parser.add_argument('--initial_lr', type=float, default=1e-3)
     parser.add_argument('--max_epoch', type=int, default=10000)
 
@@ -21,7 +24,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    logger = TensorBoardLogger("tb_logs", name="test")
+    logger = TensorBoardLogger("tb_logs", name="trainings")
     logger.log_hyperparams(args)
 
     model = ClassificationModel(hparams=args)

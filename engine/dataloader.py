@@ -16,7 +16,7 @@ class CellDataset(Dataset):
         else:
             self.images_path = os.path.join(root, 'train')
         self.transforms = transforms
-        self.data = pd.read_csv(path).values
+        self.data = pd.read_csv(path)
         classes = sorted([int(elem[6:]) for elem in np.unique(self.data[..., -1])])
         classes_interpr = np.arange(len(classes))
         self.classes = {'sirna_'+str(classes[i]):i for i in classes_interpr}
