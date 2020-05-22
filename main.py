@@ -2,11 +2,12 @@ from argparse import ArgumentParser
 import pytorch_lightning as pl
 from engine.train import ClassificationModel
 from pytorch_lightning.loggers import TensorBoardLogger
-from callbacks.callbacks import checkpoint_callback, early_stop_callback
+from callbacks.callbacks import checkpoint_callback, early_stop_callback, get_checkpoint_callback, ModelCheckpointAtEpochEnd
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
+    parser.add_argument('--exp', type=int, required=True)
     parser.add_argument('--root', type=str, required=True)
     parser.add_argument('--num_classes', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=500)
@@ -24,14 +25,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    logger = TensorBoardLogger("tb_logs", name="trainings")
+    logger = TensorBoardLogger('checkpoints/exp_'+str(args.exp), name='logs', version='')
+    all_loggers = TensorBoardLogger("tb_logs", name="trainings")
     logger.log_hyperparams(args)
 
     model = ClassificationModel(hparams=args)
+
+    save_every_n = get_checkpoint_callback(args.exp, period=3, save_every_n=True)
+    # save_best = get_checkpoint_callback(args.exp, period=1, save_every_n=False)
+
     trainer = pl.Trainer(
-        checkpoint_callback=checkpoint_callback,
+        default_root_dir='checkpoints/'+str(args.exp),
+        checkpoint_callback=save_every_n,
         # early_stop_callback=early_stop_callback,
-        max_epochs=args.max_epoch, gpus=[0], logger=logger
+        max_epochs=args.max_epoch, gpus=[0], logger=[logger, all_loggers],
     )
 
     trainer.fit(model)

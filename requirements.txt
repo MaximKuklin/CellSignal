@@ -5,4 +5,4 @@ pandas
 matplotlib
 pytorch-lightning
 albumentations
-Pillow
+Pillow-SIMD

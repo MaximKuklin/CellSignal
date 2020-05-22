@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
-from torchvision import models
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import pytorch_lightning as pl
 from models import resnet
 import albumentations as A
@@ -21,6 +21,8 @@ class ClassificationModel(pl.LightningModule):
         self.batch_size = self.hparams.batch_size
         if self.hparams.focal_loss:
             self.loss_fn = FocalLoss(gamma=2)
+        elif self.hparams.arcface_loss:
+            self.loss_fn = ArcFaceLoss()
         else:
             self.loss_fn = torch.nn.CrossEntropyLoss()
 
@@ -34,7 +36,11 @@ class ClassificationModel(pl.LightningModule):
 
     def prepare_data(self):
         transforms_train = A.Compose([
-            A.RandomResizedCrop(300, 300, scale=(0.4, 1.0), ratio=(1, 1), p=1),
+            # A.Resize(300, 300),
+            A.OneOrOther(
+                A.Resize(300, 300),
+                A.RandomResizedCrop(300, 300, scale=(0.4, 1.0), ratio=(1, 1), p=1)
+            ),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5), A.RandomRotate90(p=0.5),
             A.ToFloat(max_value=255), ToTensorV2()
@@ -57,14 +63,14 @@ class ClassificationModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.initial_lr)
-        # scheduler = CosineAnnealingLR(optimizer, T_max=100, eta_min=1e-5, last_epoch=-1)
-        return optimizer
+        scheduler = ReduceLROnPlateau(optimizer, patience=5, verbose=True)
+        return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_idx):
         images, targets = batch
         feature = self.forward(images)
         if self.metric_fn is not None:
-            output = self.metric_fn(feature, targets)
+            output = self.metric_fn(feature)
         else:
             output = self.classifier(feature)
         loss = self.loss_fn(output, targets)
@@ -85,7 +91,7 @@ class ClassificationModel(pl.LightningModule):
         images, targets = batch
         feature = self.forward(images)
         if self.metric_fn is not None:
-            output = self.metric_fn(feature, targets)
+            output = self.metric_fn(feature)
         else:
             output = self.classifier(feature)
         loss = self.loss_fn(output, targets)
